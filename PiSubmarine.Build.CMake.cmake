@@ -3,7 +3,7 @@ cmake_minimum_required (VERSION 3.25)
 include(FetchContent)
 
 if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
-	set(PISUBMARINE_GIT_TAG "main" CACHE "Git tag to be used for PiSubmarine modules.")
+	set(PISUBMARINE_GIT_TAG "main" CACHE STRING "Git tag to be used for PiSubmarine modules.")
 
 	if(WIN32)
 		add_compile_definitions(PISUBMARINE_WIN32)
