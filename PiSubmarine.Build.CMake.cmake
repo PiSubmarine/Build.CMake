@@ -20,7 +20,7 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src")
     add_subdirectory("src")
 endif()
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test")
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test" AND (WIN32 OR UNIX))
     add_subdirectory("test")
 endif()
 
