@@ -28,7 +28,7 @@ enable_testing()
 
 function(PiSubmarineAddDependency git_url git_tag)
 
-    get_filename_component(repo_filename "${git_url}" NAME_WE)
+    get_filename_component(repo_filename "${git_url}" NAME)
 
     if(git_tag)
         set(_tag_to_use "${git_tag}")
