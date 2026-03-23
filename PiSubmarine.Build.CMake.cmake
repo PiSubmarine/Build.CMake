@@ -2,6 +2,24 @@ cmake_minimum_required (VERSION 3.25)
 
 include(FetchContent)
 
+# Common compile options target
+add_library(PiSubmarineOptions INTERFACE)
+
+# Require C++23
+target_compile_features(PiSubmarineOptions INTERFACE cxx_std_23)
+
+# Enforce C++ standard strictly (no compiler extensions)
+set_target_properties(PiSubmarineOptions PROPERTIES
+    CXX_EXTENSIONS OFF
+)
+
+# MSVC: use static runtime (/MT, /MTd)
+if (MSVC)
+    set_property(TARGET PiSubmarineOptions PROPERTY
+        MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
+    )
+endif()
+
 if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
 	set(PISUBMARINE_GIT_TAG "main" CACHE STRING "Git tag to be used for PiSubmarine modules.")
 
