@@ -1,3 +1,5 @@
+message("${CMAKE_CURRENT_SOURCE_DIR}: PiSubmarine Build System called")
+
 cmake_minimum_required (VERSION 3.25)
 
 include(FetchContent)
@@ -64,16 +66,26 @@ function(PiSubmarineInitTarget target)
         message(FATAL_ERROR "PiSubmarineInitTarget: '${target}' is not a valid target")
     endif()
 
-    # Require C++23
-    target_compile_features(${target} PRIVATE cxx_std_23)
+    # Detect target type
+    get_target_property(_type ${target} TYPE)
 
-    # Enforce standard strictly (no compiler extensions)
+    if (_type STREQUAL "INTERFACE_LIBRARY")
+        set(_scope INTERFACE)
+    else()
+        set(_scope PRIVATE)
+    endif()
+
+    # C++23
+    target_compile_features(${target} ${_scope} cxx_std_23)
+
+    # Enforce standard strictly
     set_target_properties(${target} PROPERTIES
             CXX_EXTENSIONS OFF
+            CXX_STANDARD_REQUIRED ON
     )
 
-    # MSVC: force static runtime (/MT, /MTd)
-    if (MSVC)
+    # MSVC runtime (only for real build targets)
+    if (MSVC AND NOT _type STREQUAL "INTERFACE_LIBRARY")
         set_property(TARGET ${target} PROPERTY
                 MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
         )
