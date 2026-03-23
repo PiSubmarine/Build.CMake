@@ -2,35 +2,16 @@ cmake_minimum_required (VERSION 3.25)
 
 include(FetchContent)
 
-if (NOT TARGET PiSubmarine_Build_Options)
-    add_library(PiSubmarine_Build_Options INTERFACE)
-
-    # Require C++23
-    target_compile_features(PiSubmarine_Build_Options INTERFACE cxx_std_23)
-
-    # Enforce strict standard (no compiler extensions)
-    set_target_properties(PiSubmarine_Build_Options PROPERTIES
-        CXX_EXTENSIONS OFF
-    )
-
-    # MSVC: use static runtime (/MT, /MTd)
-    if (MSVC)
-        set_property(TARGET PiSubmarine_Build_Options PROPERTY
-            MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
-        )
-    endif()
-endif()
-
 if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
-	set(PISUBMARINE_GIT_TAG "main" CACHE STRING "Git tag to be used for PiSubmarine modules.")
+    set(PISUBMARINE_GIT_TAG "main" CACHE STRING "Git tag to be used for PiSubmarine modules.")
 
-	if(WIN32)
-		add_compile_definitions(PISUBMARINE_WIN32)
-	elseif(UNIX)
-		add_compile_definitions(PISUBMARINE_UNIX)
-	else()
-		add_compile_definitions(PISUBMARINE_BAREMETAL)
-	endif()
+    if(WIN32)
+        add_compile_definitions(PISUBMARINE_WIN32)
+    elseif(UNIX)
+        add_compile_definitions(PISUBMARINE_UNIX)
+    else()
+        add_compile_definitions(PISUBMARINE_BAREMETAL)
+    endif()
 endif()
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/app")
@@ -58,11 +39,11 @@ function(PiSubmarineAddDependency git_url git_tag)
     endif()
 
     FetchContent_Declare(
-        ${repo_filename}
-        GIT_REPOSITORY ${git_url}
-        GIT_TAG        ${_tag_to_use}
-        GIT_SHALLOW    TRUE
-        GIT_PROGRESS   TRUE
+            ${repo_filename}
+            GIT_REPOSITORY ${git_url}
+            GIT_TAG        ${_tag_to_use}
+            GIT_SHALLOW    TRUE
+            GIT_PROGRESS   TRUE
     )
 
     FetchContent_MakeAvailable(${repo_filename})
@@ -70,10 +51,31 @@ endfunction()
 
 
 function (PiSubmarineInitModule)
-	# Enable Hot Reload for MSVC compilers if supported.
-	if (POLICY CMP0141)
-	  cmake_policy(SET CMP0141 NEW)
-	  set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
-	endif()
+    # Enable Hot Reload for MSVC compilers if supported.
+    if (POLICY CMP0141)
+        cmake_policy(SET CMP0141 NEW)
+        set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
+    endif()
 
+endfunction()
+
+function(PiSubmarineInitTarget target)
+    if (NOT TARGET ${target})
+        message(FATAL_ERROR "PiSubmarineInitTarget: '${target}' is not a valid target")
+    endif()
+
+    # Require C++23
+    target_compile_features(${target} PRIVATE cxx_std_23)
+
+    # Enforce standard strictly (no compiler extensions)
+    set_target_properties(${target} PROPERTIES
+            CXX_EXTENSIONS OFF
+    )
+
+    # MSVC: force static runtime (/MT, /MTd)
+    if (MSVC)
+        set_property(TARGET ${target} PROPERTY
+                MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
+        )
+    endif()
 endfunction()
