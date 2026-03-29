@@ -91,5 +91,5 @@ function(PiSubmarineInitTarget target)
         )
     endif()
 	
-	target_compile_definitions(${target} ${_scope} PISUBMARINE_TARGET_NAME=${target})
+	target_compile_definitions(${target} ${_scope} PISUBMARINE_TARGET_NAME="${target}")
 endfunction()
