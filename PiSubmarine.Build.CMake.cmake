@@ -2,9 +2,28 @@ cmake_minimum_required (VERSION 3.25)
 
 include(FetchContent)
 
+function(PiSubmarineGetModuleName REPO_URL OUT_VAR)
+    # 1. Remove the trailing ".git" if it exists
+    string(REGEX REPLACE "\\.git$" "" _clean_url "${REPO_URL}")
+
+    # 2. Extract the organization and repository name
+    if(_clean_url MATCHES "([^/:]+)/([^/]+)$")
+        set(_org "${CMAKE_MATCH_1}")
+        set(_repo "${CMAKE_MATCH_2}")
+
+        # 3. Set the variable name contained in OUT_VAR in the parent scope
+        set(${OUT_VAR} "${_org}.${_repo}" PARENT_SCOPE)
+    else()
+        message(FATAL_ERROR "Could not parse module name from URL: ${REPO_URL}")
+        # Clear the variable in parent scope on failure
+        set(${OUT_VAR} "" PARENT_SCOPE)
+    endif()
+endfunction()
+
 function(PiSubmarineAddDependency git_url git_tag)
 
-    get_filename_component(repo_filename "${git_url}" NAME)
+    # get_filename_component(repo_filename "${git_url}" NAME)
+    PiSubmarineGetModuleName("${git_url}" repo_filename)
 
     if(git_tag)
         set(_tag_to_use "${git_tag}")
@@ -23,25 +42,6 @@ function(PiSubmarineAddDependency git_url git_tag)
     )
 
     FetchContent_MakeAvailable(${repo_filename})
-endfunction()
-
-function(PiSubmarineGetModuleName REPO_URL)
-    # 1. Remove the trailing ".git" if it exists
-    string(REGEX REPLACE "\\.git$" "" _clean_url "${REPO_URL}")
-
-    # 2. Extract the organization and repository name from the end of the URL
-    # Matches the last two segments separated by a slash (e.g., PiSubmarine/SPI.Api),
-    # ignoring the protocol (https://) or SSH formatting (git@github.com:).
-    if(_clean_url MATCHES "([^/:]+)/([^/]+)$")
-        set(_org "${CMAKE_MATCH_1}")
-        set(_repo "${CMAKE_MATCH_2}")
-
-        # 3. Set the variable in the parent scope so the caller can use it
-        set(PISUBMARINE_MODULE_NAME "${_org}.${_repo}" PARENT_SCOPE)
-    else()
-        message(WARNING "Could not parse module name from URL: ${REPO_URL}")
-        set(PISUBMARINE_MODULE_NAME "" PARENT_SCOPE)
-    endif()
 endfunction()
 
 function(PiSubmarineInitTarget target)
@@ -96,7 +96,7 @@ function (PiSubmarineInitModule module_name)
         )
 
         if(GIT_REMOTE_URL)
-            PiSubmarineGetModuleName(${GIT_REMOTE_URL})
+            PiSubmarineGetModuleName(${GIT_REMOTE_URL} PISUBMARINE_MODULE_NAME)
         else()
             message(FATAL_ERROR "Failed to get project name from git URL.")
         endif()
