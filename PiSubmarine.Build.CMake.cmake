@@ -4,33 +4,6 @@ cmake_minimum_required (VERSION 3.25)
 
 include(FetchContent)
 
-if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
-    set(PISUBMARINE_GIT_TAG "main" CACHE STRING "Git tag to be used for PiSubmarine modules.")
-
-    if(WIN32)
-        add_compile_definitions(PISUBMARINE_WIN32)
-    elseif(UNIX)
-        add_compile_definitions(PISUBMARINE_UNIX)
-    else()
-        add_compile_definitions(PISUBMARINE_BAREMETAL)
-    endif()
-endif()
-
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/app")
-    add_subdirectory("app")
-endif()
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src")
-    add_subdirectory("src")
-endif()
-if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test" AND (WIN32 OR UNIX))
-    add_subdirectory("test")
-endif()
-if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/mock" AND (WIN32 OR UNIX))
-    add_subdirectory("mock")
-endif()
-
-enable_testing()
-
 function(PiSubmarineAddDependency git_url git_tag)
 
     get_filename_component(repo_filename "${git_url}" NAME)
@@ -54,14 +27,23 @@ function(PiSubmarineAddDependency git_url git_tag)
     FetchContent_MakeAvailable(${repo_filename})
 endfunction()
 
+function(PiSubmarineGetModuleName REPO_URL)
+    # 1. Remove the trailing ".git" if it exists
+    string(REGEX REPLACE "\\.git$" "" _clean_url "${REPO_URL}")
 
-function (PiSubmarineInitModule)
-    # Enable Hot Reload for MSVC compilers if supported.
-    if (POLICY CMP0141)
-        cmake_policy(SET CMP0141 NEW)
-        set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
+    # 2. Extract the organization and repository name from the end of the URL
+    # Matches the last two segments separated by a slash (e.g., PiSubmarine/SPI.Api),
+    # ignoring the protocol (https://) or SSH formatting (git@github.com:).
+    if(_clean_url MATCHES "([^/:]+)/([^/]+)$")
+        set(_org "${CMAKE_MATCH_1}")
+        set(_repo "${CMAKE_MATCH_2}")
+
+        # 3. Set the variable in the parent scope so the caller can use it
+        set(PISUBMARINE_MODULE_NAME "${_org}.${_repo}" PARENT_SCOPE)
+    else()
+        message(WARNING "Could not parse module name from URL: ${REPO_URL}")
+        set(PISUBMARINE_MODULE_NAME "" PARENT_SCOPE)
     endif()
-
 endfunction()
 
 function(PiSubmarineInitTarget target)
@@ -93,6 +75,70 @@ function(PiSubmarineInitTarget target)
                 MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
         )
     endif()
-	
-	target_compile_definitions(${target} ${_scope} PISUBMARINE_TARGET_NAME="${target}")
+
+    target_compile_definitions(${target} ${_scope} PISUBMARINE_TARGET_NAME="${target}")
+endfunction()
+
+function (PiSubmarineInitModule module_name)
+    # Enable Hot Reload for MSVC compilers if supported.
+    if (POLICY CMP0141)
+        cmake_policy(SET CMP0141 NEW)
+        set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
+    endif()
+
+    if (module_name)
+        set(PISUBMARINE_MODULE_NAME ${module_name} PARENT_SCOPE)
+    else ()
+        execute_process(
+                COMMAND git config --get remote.origin.url
+                WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+                OUTPUT_VARIABLE GIT_REMOTE_URL
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET
+        )
+
+        if(GIT_REMOTE_URL)
+            PiSubmarineGetModuleName(${GIT_REMOTE_URL})
+        else()
+            message(FATAL_ERROR "Failed to get project name from git URL.")
+        endif()
+
+        set(PISUBMARINE_MODULE_NAME ${PISUBMARINE_MODULE_NAME} PARENT_SCOPE)
+    endif ()
+
+endfunction()
+
+function(PiSubmarineConfigureModule)
+    if(NOT PISUBMARINE_MODULE_NAME)
+        message(FATAL_ERROR "PISUBMARINE_MODULE_NAME not set")
+    endif()
+
+    message("Configuring module: ${PISUBMARINE_MODULE_NAME}")
+
+    if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+        set(PISUBMARINE_GIT_TAG "main" CACHE STRING "Git tag to be used for PiSubmarine modules.")
+
+        if(WIN32)
+            add_compile_definitions(PISUBMARINE_WIN32)
+        elseif(UNIX)
+            add_compile_definitions(PISUBMARINE_UNIX)
+        else()
+            add_compile_definitions(PISUBMARINE_BAREMETAL)
+        endif()
+    endif()
+
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/app")
+        add_subdirectory("app")
+    endif()
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src")
+        add_subdirectory("src")
+    endif()
+    if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test" AND (WIN32 OR UNIX))
+        add_subdirectory("test")
+    endif()
+    if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test" AND (WIN32 OR UNIX))
+        add_subdirectory("mock")
+    endif()
+
+    enable_testing()
 endfunction()
