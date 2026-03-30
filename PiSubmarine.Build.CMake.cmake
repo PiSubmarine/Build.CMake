@@ -1,5 +1,3 @@
-message("${CMAKE_CURRENT_SOURCE_DIR}: PiSubmarine Build System called")
-
 cmake_minimum_required (VERSION 3.25)
 
 include(FetchContent)
