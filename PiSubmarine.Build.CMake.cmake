@@ -125,7 +125,7 @@ function(PiSubmarineConfigureModule)
         endif()
     endif()
 
-    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/app")
+    if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/app")
         add_subdirectory("app")
     endif()
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src")
