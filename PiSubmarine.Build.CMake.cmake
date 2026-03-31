@@ -73,8 +73,6 @@ function(PiSubmarineInitTarget target)
                 MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
         )
     endif()
-
-    target_compile_definitions(${target} ${_scope} PISUBMARINE_TARGET_NAME="${target}")
 endfunction()
 
 function (PiSubmarineInitModule module_name)
