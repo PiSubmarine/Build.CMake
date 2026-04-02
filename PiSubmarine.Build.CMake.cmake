@@ -58,8 +58,11 @@ function(PiSubmarineInitTarget target)
         set(_scope PRIVATE)
     endif()
 
-    # C++23
-    target_compile_features(${target} ${_scope} cxx_std_23)
+    set_target_properties(${target} PROPERTIES
+            CXX_STANDARD 23
+            CXX_STANDARD_REQUIRED ON
+            CXX_EXTENSIONS OFF
+    )
 
     # Enforce standard strictly
     set_target_properties(${target} PROPERTIES
