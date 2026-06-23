@@ -2,6 +2,17 @@ cmake_minimum_required (VERSION 3.25)
 
 include(FetchContent)
 
+set(PISUBMARINE_BUILD_HASH_LENGTH 8 CACHE STRING "Length of the hash suffix used for shortened FetchContent names.")
+set(PISUBMARINE_BUILD_MODULE_LENGTH_LIMIT 0 CACHE STRING "Maximum length for FetchContent names. Set to 0 to disable shortening.")
+
+if(NOT PISUBMARINE_BUILD_HASH_LENGTH MATCHES "^[0-9]+$")
+    message(FATAL_ERROR "PISUBMARINE_BUILD_HASH_LENGTH must be an integer.")
+endif()
+
+if(NOT PISUBMARINE_BUILD_MODULE_LENGTH_LIMIT MATCHES "^[0-9]+$")
+    message(FATAL_ERROR "PISUBMARINE_BUILD_MODULE_LENGTH_LIMIT must be an integer.")
+endif()
+
 function(PiSubmarineGetModuleName REPO_URL OUT_VAR)
     # 1. Remove the trailing ".git" if it exists
     string(REGEX REPLACE "\\.git$" "" _clean_url "${REPO_URL}")
@@ -20,10 +31,47 @@ function(PiSubmarineGetModuleName REPO_URL OUT_VAR)
     endif()
 endfunction()
 
+function(PiSubmarineGetFetchContentName MODULE_NAME OUT_VAR)
+    if(NOT MODULE_NAME)
+        message(FATAL_ERROR "PiSubmarineGetFetchContentName: MODULE_NAME is empty")
+    endif()
+
+    if(PISUBMARINE_BUILD_MODULE_LENGTH_LIMIT EQUAL 0)
+        set(${OUT_VAR} "${MODULE_NAME}" PARENT_SCOPE)
+        return()
+    endif()
+
+    string(LENGTH "${MODULE_NAME}" _module_name_length)
+
+    if(_module_name_length LESS_EQUAL PISUBMARINE_BUILD_MODULE_LENGTH_LIMIT)
+        set(${OUT_VAR} "${MODULE_NAME}" PARENT_SCOPE)
+        return()
+    endif()
+
+    math(EXPR _short_name_length "${PISUBMARINE_BUILD_MODULE_LENGTH_LIMIT} - 1 - ${PISUBMARINE_BUILD_HASH_LENGTH}")
+
+    if(_short_name_length LESS 1)
+        message(FATAL_ERROR "PISUBMARINE_BUILD_MODULE_LENGTH_LIMIT must be greater than PISUBMARINE_BUILD_HASH_LENGTH + 1.")
+    endif()
+
+    if(MODULE_NAME MATCHES "^[^.]+\\.(.+)$")
+        set(_short_source "${CMAKE_MATCH_1}")
+    else()
+        set(_short_source "${MODULE_NAME}")
+    endif()
+
+    string(SUBSTRING "${_short_source}" 0 ${_short_name_length} _short_name)
+    string(MD5 _module_name_hash "${MODULE_NAME}")
+    string(SUBSTRING "${_module_name_hash}" 0 ${PISUBMARINE_BUILD_HASH_LENGTH} _short_hash)
+
+    set(${OUT_VAR} "${_short_name}-${_short_hash}" PARENT_SCOPE)
+endfunction()
+
 function(PiSubmarineAddDependency git_url git_tag)
 
     # get_filename_component(repo_filename "${git_url}" NAME)
     PiSubmarineGetModuleName("${git_url}" repo_filename)
+    PiSubmarineGetFetchContentName("${repo_filename}" fetchcontent_name)
 
     if(git_tag)
         set(_tag_to_use "${git_tag}")
@@ -34,14 +82,14 @@ function(PiSubmarineAddDependency git_url git_tag)
     endif()
 
     FetchContent_Declare(
-            ${repo_filename}
+            ${fetchcontent_name}
             GIT_REPOSITORY ${git_url}
             GIT_TAG        ${_tag_to_use}
             GIT_SHALLOW    TRUE
             GIT_PROGRESS   TRUE
     )
 
-    FetchContent_MakeAvailable(${repo_filename})
+    FetchContent_MakeAvailable(${fetchcontent_name})
 endfunction()
 
 function(PiSubmarineInitTarget target)

@@ -1,0 +1,13 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "pisubmarine-build-defaults",
+      "hidden": true,
+      "cacheVariables": {
+        "PISUBMARINE_FETCHCONTENT_NAME_SHORTENING": "0",
+        "PISUBMARINE_BUILD_HASH_LENGTH": "8"
+      }
+    }
+  ]
+}
